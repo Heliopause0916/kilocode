@@ -25,7 +25,7 @@ function fmt(value: number) {
 }
 
 function saved(value: number) {
-  if (value > 0) return `${fmt(value)} ${value === 1 ? "op" : "ops"}`
+  if (value > 0) return `${fmt(value)} ${value === 1 ? "change" : "changes"}`
   return "checked · no new memory"
 }
 
@@ -81,7 +81,8 @@ function unique(input: string[]) {
   return [...new Set(input.filter(Boolean))]
 }
 
-function ops(input: Decision | undefined) {
+/** Summarizes the memory operations (adds/removes) applied in a save decision, e.g. "project.md:deploy_target". */
+function savedOperations(input: Decision | undefined) {
   const items = input?.operations ?? []
   const text = items
     .map((item) => {
@@ -122,7 +123,7 @@ function audit(text: string) {
   ).join(", ")
   return [
     `last save attempt: ${save ? `${save.result ?? "unknown"}${save.reason ? ` (${save.reason})` : ""}` : "none"}`,
-    `latest saved ops: ${ops(save)}`,
+    `latest saved changes: ${savedOperations(save)}`,
     `latest skipped: ${skip(save)}`,
     `accepted saves: ${accepted} · skipped candidates: ${skipped}`,
     `fallback used: ${fallback ? "yes" : "no"} · files updated: ${files}`,

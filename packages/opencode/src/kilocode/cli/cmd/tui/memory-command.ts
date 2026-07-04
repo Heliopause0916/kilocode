@@ -43,8 +43,8 @@ function tokens(count: number) {
   return `${count.toLocaleString()} memory ${count === 1 ? "token" : "tokens"}`
 }
 
-function ops(count: number) {
-  return `${count} ${count === 1 ? "op" : "ops"}`
+function changeCount(count: number) {
+  return `${count} ${count === 1 ? "change" : "changes"}`
 }
 
 function auto(input: boolean) {
@@ -116,12 +116,12 @@ export async function runMemoryCommand(input: {
     // Wording mirrors the server memory event messages so chat-intent and command saves read the same.
     if (parsed.operation === "remember") {
       const result = read(await input.client.memory.remember({ ...route(input), text: parsed.text }))
-      input.toast.show({ variant: "success", message: `Memory saved · ${ops(result.operationCount)}` })
+      input.toast.show({ variant: "success", message: `Memory saved · ${changeCount(result.operationCount)}` })
       return true
     }
     if (parsed.operation === "correct") {
       const result = read(await input.client.memory.correct({ ...route(input), text: parsed.text }))
-      input.toast.show({ variant: "success", message: `Correction saved · ${ops(result.operationCount)}` })
+      input.toast.show({ variant: "success", message: `Correction saved · ${changeCount(result.operationCount)}` })
       return true
     }
 

@@ -1,5 +1,6 @@
 import z from "zod"
 import { MemoryOperations } from "./ops"
+import { MemoryRedact } from "./redact"
 import digest from "../prompts/session-digest.txt"
 import typed from "../prompts/typed-consolidation.txt"
 
@@ -154,8 +155,9 @@ export function salvageTyped(input: string): z.infer<typeof typedSchema> {
       operations.push(parsed.data)
       continue
     }
+    // Redact before recording: salvage text carries raw model output into the persistent decisions audit.
     const text = opText(item)
-    if (text) salvage.push({ reason: "unsupported", text })
+    if (text) salvage.push({ reason: "unsupported", text: MemoryRedact.text(text) })
   }
   const rawSkips = Array.isArray(root.skipped) ? root.skipped : []
   const skipped: CaptureSkip[] = []

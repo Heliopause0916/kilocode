@@ -127,9 +127,10 @@ export namespace MemoryOperations {
         return false
       })
       // Skip secret-like ops (record a `secret` skip) instead of throwing so the rest of the batch applies.
+      // Redact the recorded text: skips flow into the persistent decisions audit (/memory/show, TUI).
       .filter((op) => {
         if (!secret(op)) return true
-        skipped.push({ reason: "secret", text: op.text })
+        skipped.push({ reason: "secret", text: MemoryRedact.text(op.text) })
         return false
       })
       .map((op) => {

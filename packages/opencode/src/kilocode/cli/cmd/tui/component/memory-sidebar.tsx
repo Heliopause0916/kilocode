@@ -29,7 +29,7 @@ function autosave(state: { autoConsolidate: boolean; stats: Stats }): { detail: 
   const at = state.stats.lastConsolidatedAt
   if (!at) return { detail: "watching…", on: true, saved: false }
   const count = state.stats.lastOperationCount
-  if (count > 0) return { detail: `saved ${count} ${count === 1 ? "fact" : "facts"} · ${ago(at)}`, on: true, saved: true }
+  if (count > 0) return { detail: `saved ${count} ${count === 1 ? "change" : "changes"} · ${ago(at)}`, on: true, saved: true }
   return { detail: `nothing new · ${ago(at)}`, on: true, saved: false }
 }
 

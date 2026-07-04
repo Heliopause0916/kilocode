@@ -131,6 +131,8 @@ describe("MemoryCapture (fake ports)", () => {
       expect(shown.sources.environment).toContain("cli_tests")
       expect(shown.sources.environment).not.toContain("ghp_abcdefghijklmnopqrstuvwxyz1234567890")
       expect(shown.decisions).toContain('"reason":"secret"')
+      // The audit record itself must not carry the raw secret (decisions are exposed via /memory/show).
+      expect(shown.decisions).not.toContain("ghp_abcdefghijklmnopqrstuvwxyz1234567890")
     } finally {
       await t.done()
     }

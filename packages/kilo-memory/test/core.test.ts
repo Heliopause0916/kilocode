@@ -232,10 +232,9 @@ describe("memory core package", () => {
       const shown = await Memory.show({ root: t.root })
 
       expect(mixed.result.added).toBe(1)
-      expect(mixed.result.skipped).toContainEqual({
-        reason: "secret",
-        text: "api_key=sk-abcdefghijklmnopqrstuvwxyz",
-      })
+      // The skip record is redacted: it flows into the persistent decisions audit.
+      expect(mixed.result.skipped).toContainEqual({ reason: "secret", text: "[redacted]" })
+      expect(JSON.stringify(mixed.result.skipped)).not.toContain("sk-abcdefghijklmnopqrstuvwxyz")
       expect(shown.sources.project).toContain("safe_fact")
       expect(shown.sources.project).not.toContain("sk-abcdefghijklmnopqrstuvwxyz")
       expect(shown.sources.project.match(/repo_tests/g)?.length).toBe(1)
