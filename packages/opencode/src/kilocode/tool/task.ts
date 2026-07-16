@@ -55,12 +55,35 @@ export namespace KiloTask {
    *
    * The caller must resolve `caller` (Agent.Info) and `session` (Session.Info)
    * before calling. This function is pure/synchronous.
+   *
+   * ## inheritDeny option
+   * When `subagent.options.inheritDeny === false`, the subagent explicitly opts out
+   * of inheriting parent deny rules. This enables orchestrator/worker architectures
+   * where an orchestrator (e.g., Conductor) intentionally lacks execution permissions
+   * but delegates to capable worker subagents.
+   *
+   * SECURITY NOTE: Setting `inheritDeny: false` allows subagents to have MORE
+   * permissions than their parent. Use this only when the parent agent's deny
+   * rules are intentionally restrictive for orchestration purposes, not security.
+   *
+   * @see deriveSubagentSessionPermission in agent/subagent-permissions.ts - builds session-level
+   *   permission ceilings including parent session denials and default subagent denies.
+   *   Together, these two functions build the complete subagent permission ceiling:
+   *   - This function: filters caller/session deny rules for edit/bash/MCP
+   *   - deriveSubagentSessionPermission: merges parent denials with default subagent denies
    */
   export function inherited(input: {
     caller: Agent.Info
     session: Session.Info
     mcp: Config.Info["mcp"]
+    subagent?: Agent.Info
   }): Permission.Ruleset {
+    // If subagent explicitly opts out of deny inheritance, return empty ruleset
+    // This enables orchestrator patterns where the parent intentionally restricts itself
+    if (input.subagent?.options?.inheritDeny === false) {
+      return []
+    }
+
     const rules = Permission.merge(input.caller.permission ?? [], input.session.permission ?? [])
     const prefixes = Object.keys(input.mcp ?? {}).map((k) => k.replace(/[^a-zA-Z0-9_-]/g, "_") + "_")
     const isMcp = (p: string) => prefixes.some((prefix) => p.startsWith(prefix))
@@ -72,9 +95,10 @@ export namespace KiloTask {
 
   /** Extra permission rules appended to subagent sessions */
   export function permissions(rules: Permission.Ruleset): Permission.Ruleset {
+    // Note: Default denies for task/todowrite/question are centralized in
+    // defaultSubagentDenies (see subagent-permissions.ts). This function
+    // only passes through caller-provided rules plus the interactive_terminal deny.
     return [
-      { permission: "task", pattern: "*", action: "deny" },
-      { permission: "question", pattern: "*", action: "deny" },
       { permission: "interactive_terminal", pattern: "*", action: "deny" },
       ...rules,
     ]
