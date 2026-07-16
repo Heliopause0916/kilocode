@@ -7,6 +7,8 @@ export interface CommitMessageRequest {
   previousMessage?: string
   /** Optional custom system prompt — overrides the default conventional commits prompt */
   prompt?: string
+  /** Maximum time in ms to wait for the LLM before aborting. Overrides the default when set. */
+  timeoutMs?: number
 }
 
 export interface CommitMessageResponse {
