@@ -42,17 +42,21 @@ const Percent = Schema.Number.check(Schema.isGreaterThan(0), Schema.isLessThanOr
 
 const IndexingRef = KiloIndexingSchema.annotate({ [ZodOverride]: KiloIndexingConfig }) // kilocode_change
 
-// kilocode_change start
-/** Schema for AI-generated commit message configuration. */
-const CommitMessageSchema = Schema.optional(
-  Schema.Struct({
-    prompt: Schema.optional(Schema.String).annotate({
-      description:
-        "Custom system prompt for AI commit message generation. When set, replaces the default conventional commits prompt entirely.",
-    }),
-  }),
-).annotate({ description: "Configuration for AI-generated commit messages" })
-// kilocode_change end
+ // kilocode_change start
+ /** Schema for AI-generated commit message configuration. */
+ const CommitMessageSchema = Schema.optional(
+   Schema.Struct({
+     prompt: Schema.optional(Schema.String).annotate({
+       description:
+         "Custom system prompt for AI commit message generation. When set, replaces the default conventional commits prompt entirely.",
+     }),
+     timeoutMs: Schema.optional(PositiveInt).annotate({
+       description:
+         "Maximum time in milliseconds to wait for the LLM to produce a commit message before aborting. Defaults to 300000 (5 minutes).",
+     }),
+   }),
+ ).annotate({ description: "Configuration for AI-generated commit messages" })
+ // kilocode_change end
 
 export const Info = Schema.Struct({
   $schema: Schema.optional(Schema.String).annotate({
