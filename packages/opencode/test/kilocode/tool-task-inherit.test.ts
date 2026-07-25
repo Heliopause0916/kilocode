@@ -342,7 +342,7 @@ describe("Kilo task inheritDeny option", () => {
   )
 
   test("KiloTask.inherited returns empty array when inheritDeny is false", () => {
-    const callerPermission: Permission.Ruleset = [
+    const callerPermission: Agent.Info["permission"] = [
       { permission: "bash", pattern: "*", action: "deny" },
       { permission: "edit", pattern: "*", action: "deny" },
     ]
@@ -482,7 +482,7 @@ describe("Kilo task inheritDeny option", () => {
 
   test("KiloTask.inherited includes MCP deny rules when inheritDeny is true", () => {
     // MCP permission names use the sanitized server name (e.g., filesystem_* -> filesystem_*)
-    const callerPermission: Permission.Ruleset = [
+    const callerPermission: Agent.Info["permission"] = [
       { permission: "bash", pattern: "*", action: "deny" as const },
       { permission: "filesystem_*", pattern: "*", action: "deny" as const },
       { permission: "github_*", pattern: "write*", action: "deny" as const },
@@ -492,10 +492,10 @@ describe("Kilo task inheritDeny option", () => {
     ]
 
     // MCP servers configured in config
-    const mcp = {
-      filesystem: { command: "mcp-filesystem", args: [] },
-      github: { command: "mcp-github", args: [] },
-      slack: { command: "mcp-slack", args: [] },
+    const mcp: Config.Info["mcp"] = {
+      filesystem: { type: "local", command: ["mcp-filesystem"] },
+      github: { type: "local", command: ["mcp-github"] },
+      slack: { type: "local", command: ["mcp-slack"] },
     }
 
     // With inheritDeny: true - should include MCP deny rules
@@ -518,7 +518,7 @@ describe("Kilo task inheritDeny option", () => {
   })
 
   test("KiloTask.inherited excludes MCP deny rules when inheritDeny is false", () => {
-    const callerPermission: Permission.Ruleset = [
+    const callerPermission: Agent.Info["permission"] = [
       { permission: "bash", pattern: "*", action: "deny" as const },
       { permission: "filesystem_*", pattern: "*", action: "deny" as const },
     ]
@@ -526,9 +526,9 @@ describe("Kilo task inheritDeny option", () => {
       { permission: "github_*", pattern: "*", action: "deny" as const },
     ]
 
-    const mcp = {
-      filesystem: { command: "mcp-filesystem", args: [] },
-      github: { command: "mcp-github", args: [] },
+    const mcp: Config.Info["mcp"] = {
+      filesystem: { type: "local", command: ["mcp-filesystem"] },
+      github: { type: "local", command: ["mcp-github"] },
     }
 
     // With inheritDeny: false - should return empty ruleset
@@ -551,7 +551,7 @@ describe("Kilo task inheritDeny option", () => {
     // v7.4.15: mutation set expanded from ["edit", "bash"] to
     // ["edit", "bash", "notebook_edit", "notebook_execute"].
     // Non-mutation tool permissions should NOT be inherited even if deny.
-    const callerPermission: Permission.Ruleset = [
+    const callerPermission: Agent.Info["permission"] = [
       { permission: "bash", pattern: "*", action: "deny" as const },
       { permission: "edit", pattern: "*", action: "deny" as const },
       { permission: "notebook_edit", pattern: "*", action: "deny" as const },
@@ -563,9 +563,9 @@ describe("Kilo task inheritDeny option", () => {
       { permission: "bash", pattern: "ls", action: "allow" as const }, // Allow should NOT be inherited
     ]
 
-    const mcp = {
-      filesystem: { command: "mcp-filesystem", args: [] },
-      github: { command: "mcp-github", args: [] },
+    const mcp: Config.Info["mcp"] = {
+      filesystem: { type: "local", command: ["mcp-filesystem"] },
+      github: { type: "local", command: ["mcp-github"] },
     }
 
     const result = KiloTask.inherited({
@@ -599,7 +599,7 @@ describe("Kilo task inheritDeny option", () => {
     // is not an exact mutation match (mutation.has("*") is false), so the filter
     // step skips it. The evaluate fallback detects that "*" denies each mutation
     // permission and adds explicit {permission, "*", deny} rules.
-    const callerPermission: Permission.Ruleset = [
+    const callerPermission: Agent.Info["permission"] = [
       { permission: "*", pattern: "*", action: "deny" as const },
     ]
 
@@ -639,7 +639,7 @@ describe("Kilo task inheritDeny option", () => {
     // general has inheritDeny: false
     // explore should NOT inherit plan's edit deny
 
-    const planPermission: Permission.Ruleset = [
+    const planPermission: Agent.Info["permission"] = [
       { permission: "edit", pattern: "*", action: "deny" as const },
       { permission: "bash", pattern: "rm *", action: "deny" as const },
     ]
