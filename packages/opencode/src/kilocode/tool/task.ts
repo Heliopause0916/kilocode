@@ -60,7 +60,9 @@ export namespace KiloTask {
     caller: Agent.Info
     session: Session.Info
     mcp: Config.Info["mcp"]
+    subagent?: Agent.Info
   }): Permission.Ruleset {
+    if (input.subagent?.options?.inheritDeny === false) return []
     const rules = Permission.merge(input.caller.permission ?? [], input.session.permission ?? [])
     const prefixes = Object.keys(input.mcp ?? {}).map((k) => k.replace(/[^a-zA-Z0-9_-]/g, "_") + "_")
     const isMcp = (p: string) => prefixes.some((prefix) => p.startsWith(prefix))
@@ -75,11 +77,12 @@ export namespace KiloTask {
     return merge(inherited)
   }
 
-  /** Extra permission rules appended to subagent sessions */
+  /**
+   * Extra permission rules appended to subagent sessions.
+   * task/question denies are centralized in defaultSubagentDenies (subagent-permissions.ts).
+   */
   export function permissions(rules: Permission.Ruleset): Permission.Ruleset {
     return [
-      { permission: "task", pattern: "*", action: "deny" },
-      { permission: "question", pattern: "*", action: "deny" },
       { permission: "interactive_terminal", pattern: "*", action: "deny" },
       ...rules,
     ]
