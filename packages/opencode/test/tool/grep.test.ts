@@ -243,4 +243,24 @@ describe("tool.grep", () => {
       expect(requests.find((req) => req.permission === "external_directory")).toBeUndefined()
     }),
   )
+
+  // kilocode_change start - a runaway grep is forced to stop and reports a clear timeout instead of hanging
+  it.instance("reports a clear error when grep times out", () =>
+    Effect.gen(function* () {
+      const test = yield* TestInstance
+      yield* Effect.promise(() =>
+        Promise.all(
+          Array.from({ length: 400 }, (_, index) => Bun.write(path.join(test.directory, `f-${index}.txt`), "needle\n")),
+        ),
+      )
+      const info = yield* GrepTool
+      const grep = yield* info.init()
+      const timed: Tool.Context = { ...ctx, extra: { grepTimeout: 1 } }
+      const result = yield* grep.execute({ pattern: "zzzznomatch", path: test.directory }, timed)
+      expect(result.output).toContain("grep timed out")
+      expect(result.output).toContain("was aborted")
+    }),
+  )
+
+  // kilocode_change end
 })
