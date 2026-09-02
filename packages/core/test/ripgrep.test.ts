@@ -76,4 +76,21 @@ describe("Ripgrep", () => {
     }),
   )
   // kilocode_change end
+
+  // kilocode_change start - a fired timeout signal must interrupt and kill the underlying rg process
+  it.live("aborts the run when a timeout signal fires", () =>
+    Effect.gen(function* () {
+      const ripgrep = yield* Ripgrep.Service
+      const error = yield* ripgrep
+        .grep({
+          cwd: process.cwd(),
+          pattern: "kjqwnxzoiunmatchablepattern",
+          limit: 10,
+          signal: AbortSignal.timeout(0),
+        })
+        .pipe(Effect.flip)
+      expect(error.message).toMatch(/^ripgrep execution failed: .+/)
+    }),
+  )
+  // kilocode_change end
 })
