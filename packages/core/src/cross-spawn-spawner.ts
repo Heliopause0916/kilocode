@@ -416,13 +416,19 @@ export const make = Effect.gen(function* () {
               }
               const send = (s: NodeJS.Signals) =>
                 Effect.catch(killGroup(command, proc, s), () => killOne(command, proc, s))
-              // kilocode_change start - preserve kill options from the prepared command
+              // kilocode_change start - preserve kill options from the prepared command; bound exit-confirmation waits (a dropped close event on Bun/Windows must not stall forever)
               const sig = target.options.killSignal ?? "SIGTERM"
-              const attempt = send(sig).pipe(Effect.andThen(Deferred.await(signal)), Effect.asVoid)
+              const waitExit = (s: NodeJS.Signals) =>
+                send(s).pipe(
+                  Effect.andThen(Deferred.await(signal)),
+                  Effect.timeoutOption(5_000),
+                  Effect.asVoid,
+                )
+              const attempt = waitExit(sig)
               const escalated = target.options.forceKillAfter
                 ? Effect.timeoutOrElse(attempt, {
                     duration: target.options.forceKillAfter,
-                    orElse: () => send("SIGKILL").pipe(Effect.andThen(Deferred.await(signal)), Effect.asVoid),
+                    orElse: () => waitExit("SIGKILL"),
                   })
                 : attempt
               // kilocode_change end
@@ -448,11 +454,19 @@ export const make = Effect.gen(function* () {
               const send = (s: NodeJS.Signals) =>
                 Effect.catch(killGroup(command, proc, s), () => killOne(command, proc, s))
               const attempt = send(sig).pipe(Effect.andThen(Deferred.await(signal)), Effect.asVoid)
-              if (!opts?.forceKillAfter) return attempt
+              // kilocode_change start - bound every exit-confirmation wait; the escalation branch gets its own full window
+              if (!opts?.forceKillAfter)
+                return attempt.pipe(Effect.timeoutOption(5_000), Effect.asVoid)
               return Effect.timeoutOrElse(attempt, {
                 duration: opts.forceKillAfter,
-                orElse: () => send("SIGKILL").pipe(Effect.andThen(Deferred.await(signal)), Effect.asVoid),
+                orElse: () =>
+                  send("SIGKILL").pipe(
+                    Effect.andThen(Deferred.await(signal)),
+                    Effect.timeoutOption(5_000),
+                    Effect.asVoid,
+                  ),
               })
+              // kilocode_change end
             },
             unref: Effect.sync(() => {
               if (ref) {

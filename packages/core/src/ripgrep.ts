@@ -126,6 +126,7 @@ export const layer = Layer.effect(
             cwd: input.cwd,
             extendEnv: true,
             stdin: "ignore",
+            forceKillAfter: 3_000, // kilocode_change - escalate to SIGKILL when the rg process ignores termination
           })
           const handle = yield* process.spawn(
             input.validate ? SpawnValidation.attach(command, input.validate) : command,

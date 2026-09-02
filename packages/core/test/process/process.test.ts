@@ -346,5 +346,41 @@ describe("AppProcess", () => {
         }),
       ),
     )
+
+    // kilocode_change start - bounded exit-confirmation waits are a Kilo fix for dropped close events on Bun/Windows
+    if (process.platform !== "win32") {
+      it.live(
+        "kill returns within a bounded wait even when the child ignores SIGTERM",
+        Effect.gen(function* () {
+          const svc = yield* AppProcess.Service
+          const handle = yield* svc.spawn(ChildProcess.make("sh", ["-c", "trap '' TERM; exec sleep 30"]))
+          const started = Date.now()
+          yield* handle.kill()
+          expect(Date.now() - started).toBeLessThan(10_000)
+          // the child ignored SIGTERM and is still alive - clean it up
+          yield* Effect.ignore(
+            Effect.try({
+              try: () => process.kill(Number(handle.pid), "SIGKILL"),
+              catch: (error) => error,
+            }),
+          )
+        }),
+        15_000,
+      )
+
+      it.live(
+        "interrupting a run against a child that ignores SIGTERM settles in bounded time",
+        Effect.gen(function* () {
+          const svc = yield* AppProcess.Service
+          const command = ChildProcess.make("sh", ["-c", "trap '' TERM; sleep 30"], { forceKillAfter: 1_000 })
+          const fiber = yield* svc.run(command).pipe(Effect.forkScoped)
+          const started = Date.now()
+          yield* Fiber.interrupt(fiber)
+          expect(Date.now() - started).toBeLessThan(10_000)
+        }),
+        15_000,
+      )
+    }
+    // kilocode_change end
   })
 })
