@@ -150,10 +150,11 @@ function clean(text: string): string {
   return result.trim()
 }
 
-// Maximum time (ms) to wait for the LLM to produce a commit message before
-// aborting. Prevents the HTTP request from hanging indefinitely when the
-// provider is slow or the stream stalls (e.g. due to config state races).
-const TIMEOUT_MS = 30_000
+// Default maximum time (ms) to wait for the LLM to produce a commit message
+// before aborting. Prevents the HTTP request from hanging indefinitely when
+// the provider is slow or the stream stalls (e.g. due to config state races).
+// Aligned with the Provider layer default request timeout (300s).
+const DEFAULT_TIMEOUT_MS = 300_000
 
 export async function generateCommitMessage(request: CommitMessageRequest): Promise<CommitMessageResponse> {
   const ctx = await CommitMessageRuntime.context(request.path, request.selectedFiles)
@@ -183,8 +184,9 @@ export async function generateCommitMessage(request: CommitMessageRequest): Prom
     userMessage = `IMPORTANT: Generate a COMPLETELY DIFFERENT commit message from the previous one. The previous message was: "${request.previousMessage}". Use a different type, scope, or description approach.\n\n${userMessage}`
   }
 
+  const timeoutMs = request.timeoutMs ?? DEFAULT_TIMEOUT_MS
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
 
   try {
     const result = await CommitMessageRuntime.generate(
@@ -223,7 +225,7 @@ export async function generateCommitMessage(request: CommitMessageRequest): Prom
     return { message: clean(result) }
   } catch (err) {
     if (controller.signal.aborted) {
-      throw new Error("Commit message generation timed out after 30 seconds")
+      throw new Error(`Commit message generation timed out after ${Math.ceil(timeoutMs / 1000)} seconds`)
     }
     const msg = err instanceof Error ? err.message : String(err)
     log.error("generation failed", { error: msg })

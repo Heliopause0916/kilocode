@@ -2,6 +2,7 @@ import path from "path"
 import { pathToFileURL } from "url"
 import { existsSync } from "fs"
 import { Effect, Schema } from "effect"
+import { PositiveInt } from "@opencode-ai/core/schema"
 import { applyEdits, modify, parse as parseJsonc } from "jsonc-parser"
 import { mergeDeep } from "remeda"
 import * as Log from "@opencode-ai/core/util/log"
@@ -31,6 +32,10 @@ export namespace KilocodeConfig {
       prompt: Schema.optional(Schema.String).annotate({
         description:
           "Custom system prompt for AI commit message generation. When set, replaces the default conventional commits prompt entirely.",
+      }),
+      timeoutMs: Schema.optional(PositiveInt).annotate({
+        description:
+          "Maximum time in milliseconds to wait for the LLM to produce a commit message before aborting. Defaults to 300000 (5 minutes).",
       }),
     }),
   ).annotate({ description: "Configuration for AI-generated commit messages" })
