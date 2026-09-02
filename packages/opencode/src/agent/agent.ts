@@ -60,6 +60,24 @@ export const Info = Schema.Struct({
   ),
   variant: Schema.optional(Schema.String),
   prompt: Schema.optional(Schema.String),
+  // kilocode_change start
+  /**
+   * Agent options dictionary. Known keys:
+   *
+   * - inheritDeny: boolean - Whether to inherit parent agent's deny rules when used as a subagent.
+   *   Defaults to true. Set to false to allow subagents to have MORE permissions than their parent,
+   *   which is useful for orchestrator/worker patterns where the orchestrator intentionally lacks
+   *   execution permissions but delegates to capable worker subagents.
+   *
+   *   Example: A "conductor" agent with edit/bash deny rules can delegate to "builder" workers
+   *   that have edit/bash allow rules by setting inheritDeny: false on the worker agent config.
+   *
+   *   SECURITY: Setting inheritDeny: false allows subagents to bypass parent restrictions:
+   *   the subagent will NOT inherit the parent session's deny rules (including runtime user
+   *   denials and session-level disables) nor the edit/notebook/MCP hard ceilings.
+   *   Use only when the parent's deny rules are intentionally restrictive for orchestration.
+   */
+  // kilocode_change end
   options: Schema.Record(Schema.String, Schema.Unknown),
   steps: Schema.optional(Schema.Finite),
 }).annotate({ identifier: "Agent" })
