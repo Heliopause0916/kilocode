@@ -128,7 +128,7 @@ const layer = Layer.effect(
             cwd: input.cwd,
             extendEnv: true,
             stdin: "ignore",
-            forceKillAfter: input.stop ? Duration.seconds(1) : undefined, // kilocode_change - bound grep interruption
+            forceKillAfter: input.stop ? Duration.seconds(1) : Duration.seconds(3), // kilocode_change - bound grep interruption; escalate to SIGKILL when the rg process ignores termination
           })
           const validated = input.validate ? SpawnValidation.attach(command, input.validate) : command
           const spawned = input.stop ? SpawnExit.attach(validated) : validated // kilocode_change
