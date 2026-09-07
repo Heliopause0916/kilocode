@@ -1,0 +1,10 @@
+{
+  "name": "@kilocode/kilo-web-app",
+  "private": true,
+  "version": "1.18.29",
+  "type": "module",
+  "files": [
+    "app",
+    "MANIFEST.json"
+  ]
+}

@@ -17,6 +17,7 @@ import {
 } from "@opencode-ai/protocol/groups/pty"
 import { response } from "../location"
 import { PtyEnvironment } from "../pty-environment"
+import { PTY_CONNECT_ALIAS_HEADERS } from "../kilocode/pty-compat" // kilocode_change
 
 const ticketScope = Effect.gen(function* () {
   const location = yield* Location.Service
@@ -117,13 +118,17 @@ export const PtyHandler = HttpApiBuilder.group(Api, "server.pty", (handlers) =>
         "pty.connectToken",
         Effect.fn(function* (ctx) {
           const request = yield* HttpServerRequest.HttpServerRequest
+          // kilocode_change start - the kilo web app names the connect-token header
+          // x-opencode-ticket; only the name is aliased, the value and origin checks
+          // match the canonical x-kilo-ticket path below.
+          const authorized = [PTY_CONNECT_TOKEN_HEADER, ...PTY_CONNECT_ALIAS_HEADERS].some(
+            (header) => request.headers[header] === PTY_CONNECT_TOKEN_HEADER_VALUE,
+          ) // kilocode_change
           // The custom header forces a CORS preflight, so cross-origin browser pages cannot
           // mint tickets without passing the server's origin policy.
-          if (
-            request.headers[PTY_CONNECT_TOKEN_HEADER] !== PTY_CONNECT_TOKEN_HEADER_VALUE ||
-            !isAllowedRequestOrigin(request.headers.origin, request.headers.host, cors)
-          )
+          if (!authorized || !isAllowedRequestOrigin(request.headers.origin, request.headers.host, cors))
             return yield* new ForbiddenError({ message: "Invalid PTY connect token request" })
+          // kilocode_change end
           const pty = yield* Pty.Service
           yield* pty.get(ctx.params.ptyID).pipe(
             Effect.catchTag(

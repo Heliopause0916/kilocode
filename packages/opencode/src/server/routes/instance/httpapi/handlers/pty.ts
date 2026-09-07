@@ -16,6 +16,7 @@ import {
   PTY_CONNECT_TOKEN_HEADER,
   PTY_CONNECT_TOKEN_HEADER_VALUE,
 } from "@/server/shared/pty-ticket"
+import { PTY_CONNECT_ALIAS_HEADERS } from "@/kilocode/pty/compat" // kilocode_change
 import { Effect, Option, Queue, Schema } from "effect" // kilocode_change - location map is provided by the server
 import { HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
@@ -150,8 +151,13 @@ export const ptyHandlers = HttpApiBuilder.group(InstanceHttpApi, "pty", (handler
 
     const connectToken = Effect.fn("PtyHttpApi.connectToken")(function* (ctx: { params: { ptyID: PtyID } }) {
       const request = yield* HttpServerRequest.HttpServerRequest
-      if (request.headers[PTY_CONNECT_TOKEN_HEADER] !== PTY_CONNECT_TOKEN_HEADER_VALUE || !validOrigin(request, cors))
+      // kilocode_change start - accept the upstream opencode app's connect-token header alias
+      const authorized = [PTY_CONNECT_TOKEN_HEADER, ...PTY_CONNECT_ALIAS_HEADERS].some(
+        (header) => request.headers[header] === PTY_CONNECT_TOKEN_HEADER_VALUE,
+      ) // kilocode_change
+      if (!authorized || !validOrigin(request, cors))
         return yield* new ApiError.PtyForbiddenError({ message: "Invalid PTY connect token request" })
+      // kilocode_change end
       yield* get(ctx)
       return yield* tickets.issue({ ptyID: ctx.params.ptyID, ...(yield* ticketScope) })
     })

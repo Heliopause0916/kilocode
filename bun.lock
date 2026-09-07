@@ -513,6 +513,10 @@
         "vite-plugin-solid": "2.11.10",
       },
     },
+    "packages/kilo-web-app": {
+      "name": "@kilocode/kilo-web-app",
+      "version": "1.18.29",
+    },
     "packages/kilo-web-ui": {
       "name": "@kilocode/kilo-web-ui",
       "version": "7.5.6",
@@ -1705,6 +1709,8 @@
     "@kilocode/kilo-telemetry": ["@kilocode/kilo-telemetry@workspace:packages/kilo-telemetry"],
 
     "@kilocode/kilo-ui": ["@kilocode/kilo-ui@workspace:packages/kilo-ui"],
+
+    "@kilocode/kilo-web-app": ["@kilocode/kilo-web-app@workspace:packages/kilo-web-app"],
 
     "@kilocode/kilo-web-ui": ["@kilocode/kilo-web-ui@workspace:packages/kilo-web-ui"],
 

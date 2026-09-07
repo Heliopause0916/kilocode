@@ -1,0 +1,23 @@
+NOTICE
+
+This directory contains prebuilt artifacts of the upstream Opencode web UI,
+vendored for distribution with the Kilo CLI as build-time assets.
+
+  Upstream repository : anomalyco/opencode (https://github.com/anomalyco/opencode)
+  Upstream commit    : 57ef3828431790c53f8f333c7ffbfe88770a1812
+  Package            : @opencode-ai/app v1.18.29
+  Upstream source    : packages/app in the opencode repository
+  License            : MIT
+
+The artifacts under app/ are the unmodified Vite build output of the upstream
+packages/app, with two, and only two, transformations: all *.map source maps
+are removed, and the top-level _headers file (deployment-specific, not used at
+runtime) is removed -- mirroring the upstream embedded-UI build filter.
+
+These files are distributed solely to be embedded/self-hosted by the Kilo CLI
+web UI; they are not meant to be published or used as a standalone site.
+
+Third-party notices: the Opencode web UI bundles third-party dependencies
+(open-sourced under permissive licenses such as MIT, ISC, Apache-2.0 and
+BSD-3-Clause). Their license texts and the full dependency tree live in the
+upstream opencode repository; nothing has been added or modified here.

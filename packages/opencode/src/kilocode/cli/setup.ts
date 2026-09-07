@@ -16,6 +16,7 @@ import {
   PtySmokeCommand,
   RemoteCommand,
   RollCallCommand,
+  WebCommand,
   WorktreeCommand,
 } from "@/kilocode/cli/lazy-kilo-commands"
 
@@ -44,6 +45,7 @@ export namespace KiloCli {
   export function register<T>(cli: Argv<T>): Argv<T> {
     cli
       .command(KiloConsoleCommand)
+      .command(WebCommand)
       .command(CloudCommand)
       .command(RollCallCommand)
       .command(ProfileCommand)

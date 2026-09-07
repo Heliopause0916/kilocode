@@ -6,6 +6,12 @@ export const KiloConsoleCommand = lazy({
   load: async () => (await import("@/kilocode/cli/cmd/console")).KiloConsoleCommand,
 })
 
+export const WebCommand = lazy({
+  command: "web",
+  describe: "start the kilo server and open the web interface",
+  load: async () => (await import("@/kilocode/cli/cmd/web")).WebCommand,
+})
+
 export const CloudCommand = lazy({
   command: "cloud",
   describe: "run Cloud Agent tasks",

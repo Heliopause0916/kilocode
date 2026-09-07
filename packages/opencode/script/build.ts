@@ -112,6 +112,20 @@ async function copyKiloConsole(input: string, outputDir: string) {
   console.log(`copied Kilo Console assets to ${target}`)
 }
 
+// kilocode_change start - vendored upstream opencode web app (packages/kilo-web-app)
+async function copyKiloWeb(outputDir: string) {
+  const app = path.resolve(dir, "../kilo-web-app/app")
+  if (!fs.existsSync(path.join(app, "index.html"))) {
+    console.warn(`opencode-web assets missing at ${app}, skipping copy`)
+    return
+  }
+  const target = path.join(outputDir, "opencode-web")
+  await fs.promises.rm(target, { recursive: true, force: true })
+  await fs.promises.cp(app, target, { recursive: true })
+  console.log(`copied opencode-web assets to ${target}`)
+}
+// kilocode_change end
+
 function smokeEnv(root: string) {
   const env = { ...process.env }
   delete env.KILO_MODELS_PATH
@@ -363,6 +377,7 @@ for (const item of targets) {
   // kilocode_change start
   await copyTreeSitterWasms(path.resolve(dir, `dist/${name}/bin`))
   await copyKiloConsole(kiloConsoleDist, path.resolve(dir, `dist/${name}/bin`))
+  await copyKiloWeb(path.resolve(dir, `dist/${name}/bin`))
   await KiloSandboxWorker.copy(kiloSandboxWorker, path.resolve(dir, `dist/${name}/bin`))
   if (item.os === "linux") {
     await KiloSandboxNetwork.copy(kiloSandboxNetwork, path.resolve(dir, `dist/${name}/bin`), item.arch)

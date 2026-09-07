@@ -3,11 +3,14 @@ import { Effect } from "effect"
 import { HttpClient, HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import { createHash } from "node:crypto"
 import { ConsoleAssets } from "@/kilocode/console/assets" // kilocode_change
+import { WebAssets } from "@/kilocode/web/assets" // kilocode_change
 
 let embeddedUIPromise: Promise<Record<string, string> | null> | undefined
 
+// kilocode_change start - restore upstream blob: for embedded app (img-src + connect-src)
 export const csp = (hash = "") =>
-  `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'${hash ? ` 'sha256-${hash}'` : ""}; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; media-src 'self' data:; connect-src * data:`
+  `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'${hash ? ` 'sha256-${hash}'` : ""}; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: blob:; font-src 'self' data:; media-src 'self' data:; connect-src * data: blob:`
+// kilocode_change end
 export const DEFAULT_CSP = csp()
 
 export function themePreloadHash(body: string) {
@@ -70,6 +73,21 @@ export function serveUIEffect(
       )
     }
     if (asset?.missing) return notFound()
+    // kilocode_change end
+
+    // kilocode_change start - serve vendored upstream opencode web app under /
+    // Governed by the same disableEmbeddedWebUi flag; resolves to undefined when
+    // the assets are absent so the embedded branch below can still take over.
+    if (!services.disableEmbeddedWebUi) {
+      const web = yield* Effect.promise(() => WebAssets.resolve(path))
+      if (web && "file" in web) {
+        return yield* services.fs.readFile(web.file).pipe(
+          Effect.map((body) => embeddedUIResponse(web.file, body)),
+          Effect.catchReason("PlatformError", "NotFound", () => Effect.succeed(notFound())),
+        )
+      }
+      if (web?.missing) return notFound()
+    }
     // kilocode_change end
 
     if (embeddedWebUI) return yield* serveEmbeddedUIEffect(path, services.fs, embeddedWebUI)

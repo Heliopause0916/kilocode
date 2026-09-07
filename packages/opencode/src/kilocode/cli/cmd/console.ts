@@ -3,7 +3,7 @@ import type { Daemon } from "@/kilocode/daemon/daemon"
 import { cmd } from "@/cli/cmd/cmd"
 import { explicitNetworkOptions, withNetworkOptions } from "@/cli/network"
 import { serverUrls } from "@/kilocode/cli/server-urls"
-import { hasDisplay } from "@/kilocode/cli/cmd/tui/util/display"
+import { launch } from "@/kilocode/cli/open-browser"
 import { StopCommand } from "@/kilocode/cli/cmd/daemon"
 
 // Keep the top-level import graph light: this module is registered eagerly at CLI
@@ -14,27 +14,6 @@ function withCredentials(base: string, state: Daemon.State) {
   url.username = state.username
   url.password = state.password
   return url.toString()
-}
-
-async function launch(url: string) {
-  const { default: open } = await import("open")
-  const child = await open(url)
-  await new Promise<void>((resolve, reject) => {
-    const timer = setTimeout(resolve, 500)
-    child.once("error", (err) => {
-      clearTimeout(timer)
-      reject(err)
-    })
-    child.once("exit", (code) => {
-      if (code === null || code === 0) {
-        clearTimeout(timer)
-        resolve()
-        return
-      }
-      clearTimeout(timer)
-      reject(new Error(`Browser open failed with exit code ${code}`))
-    })
-  })
 }
 
 const OpenCommand = cmd({
@@ -62,13 +41,9 @@ const OpenCommand = cmd({
       const consoleLocal = withCredentials(urls.local, state)
       const consoleNetwork = urls.network ? withCredentials(urls.network, state) : undefined
 
-      if (hasDisplay()) {
-        await launch(consoleLocal).catch((err) => {
-          console.warn(`Could not open browser automatically: ${err instanceof Error ? err.message : String(err)}`)
-        })
-      } else {
-        console.warn("No display detected; open the Kilo Console URL manually")
-      }
+      await launch(consoleLocal, "No display detected; open the Kilo Console URL manually").catch((err) => {
+        console.warn(`Could not open browser automatically: ${err instanceof Error ? err.message : String(err)}`)
+      })
       console.log("Kilo Console:")
       console.log(`  Local:   ${consoleLocal}`)
       if (consoleNetwork) console.log(`  Network: ${consoleNetwork}`)

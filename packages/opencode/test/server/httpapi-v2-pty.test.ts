@@ -134,6 +134,53 @@ describe("v2 pty HttpApi", () => {
       await request(`/api/pty/${info.id}`, tmp.path, { method: "DELETE" })
     }
   })
+
+  // kilocode_change start - the kilo web app issues connect tokens with the
+  // upstream opencode header name; the alias must not relax the value or origin
+  // checks the canonical x-kilo-ticket header is subject to.
+  testPty("accepts the x-opencode-ticket alias without loosening value or origin checks", async () => {
+    await using tmp = await tmpdir({ git: true, config: { formatter: false, lsp: false } })
+    const created = await request("/api/pty", tmp.path, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ command: "/usr/bin/env", args: ["sh", "-c", "sleep 5"] }),
+    })
+    expect(created.status).toBe(200)
+    const info = Schema.decodeUnknownSync(Location.response(Pty.Info))(await created.json()).data
+
+    try {
+      const aliased = await request(`/api/pty/${info.id}/connect-token`, tmp.path, {
+        method: "POST",
+        headers: { "x-opencode-ticket": "1" },
+      })
+      expect(aliased.status).toBe(200)
+      const ticket = Schema.decodeUnknownSync(Location.response(PtyTicket.ConnectToken))(await aliased.json()).data.ticket
+      expect(ticket).toBeTruthy()
+
+      const wrongValue = await request(`/api/pty/${info.id}/connect-token`, tmp.path, {
+        method: "POST",
+        headers: { "x-opencode-ticket": "2" },
+      })
+      expect(wrongValue.status).toBe(403)
+      expect(await wrongValue.json()).toMatchObject({ _tag: "ForbiddenError" })
+
+      const canonical = await request(`/api/pty/${info.id}/connect-token`, tmp.path, {
+        method: "POST",
+        headers: { "x-kilo-ticket": "1" },
+      })
+      expect(canonical.status).toBe(200)
+
+      const foreignOrigin = await request(`/api/pty/${info.id}/connect-token`, tmp.path, {
+        method: "POST",
+        headers: { "x-opencode-ticket": "1", origin: "https://evil.example.com" },
+      })
+      expect(foreignOrigin.status).toBe(403)
+      expect(await foreignOrigin.json()).toMatchObject({ _tag: "ForbiddenError" })
+    } finally {
+      await request(`/api/pty/${info.id}`, tmp.path, { method: "DELETE" })
+    }
+  })
+  // kilocode_change end
   // kilocode_change start - portable live PTY coverage on Linux, macOS, and Windows CI
   effectIt.live("serves Agent Manager script terminal create, resize, input, output, exit, and remove routes", () =>
     Effect.gen(function* () {
