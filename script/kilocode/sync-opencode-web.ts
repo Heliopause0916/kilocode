@@ -37,6 +37,15 @@
  * sourceRev "unknown" and a warning; pass --source-rev <full-commit-hash> for a
  * tarball-based sync to record the upstream commit it was built from.
  *
+ * --ref <ref> (alias --tag) selects the ref checked out when the source is
+ * fetched from a git repository URL in --url mode (git clone --branch <ref>).
+ * It defaults to DEFAULT_REF (opencode v1's final release) because the upstream
+ * default branch is `dev` (opencode v2), which is not compatible with the v1
+ * backend. --ref does not apply to --upstream (an existing checkout uses its
+ * own HEAD) or to tarball URLs (the ref is embedded in the URL). Regardless of
+ * the source, every mode asserts the resolved opencode version is 1.x and
+ * fails fast otherwise, so a v2 source can never be vendored by mistake.
+ *
  * Usage:
  *   bun run script/kilocode/sync-opencode-web.ts --upstream /path/to/opencode
  *   KILO_OPENCODE_UPSTREAM=/path/to/opencode bun run script/kilocode/sync-opencode-web.ts
@@ -56,10 +65,16 @@ const APP_DIR = join(ROOT, "packages", "kilo-web-app", "app")
 const MANIFEST_PATH = join(ROOT, "packages", "kilo-web-app", "MANIFEST.json")
 const SOURCE = "anomalyco/opencode"
 
+// The opencode v1 line's final release. Without an explicit --ref/--tag we pin
+// to this instead of the upstream default branch, which is `dev` (opencode v2).
+// Shipping v2 web UI would break the v1 backend (`kilo serve` / `kilo web`).
+const DEFAULT_REF = "v1.19.3"
+
 type Args = {
   upstream?: string
   url?: string
   sourceRev?: string
+  ref?: string
   verify: boolean
 }
 
@@ -69,20 +84,25 @@ function usage() {
   console.error(
     [
       "usage:",
-      "  sync-opencode-web.ts --upstream <path> [--source-rev <rev>] [--verify]",
-      "  sync-opencode-web.ts --url <git-url|tarball-url> [--source-rev <rev>] [--verify]",
+      "  sync-opencode-web.ts --upstream <path> [--source-rev <rev>] [--ref <ref>] [--verify]",
+      "  sync-opencode-web.ts --url <git-url|tarball-url> [--source-rev <rev>] [--ref <ref>] [--verify]",
       "  sync-opencode-web.ts [-h|--help]",
       "",
       "With no --upstream/--url, $KILO_OPENCODE_UPSTREAM is used, then the first",
       "/tmp/opencode-upstream-* directory. --verify checks the vendored tree in",
       "packages/kilo-web-app/ against MANIFEST.json without building or copying.",
       "--source-rev pins the MANIFEST sourceRev (required for reproducible tarball",
-      "syncs; tarball fetch without it records sourceRev \"unknown\").",
+      "syncs; tarball fetch without it records sourceRev \"unknown\"). --ref <ref>",
+      "(alias --tag) selects the ref checked out when fetching a git repository URL",
+      "(git clone --branch); it defaults to the opencode v1 final release. --ref does",
+      "not apply to --upstream (uses that checkout's HEAD) or to tarball URLs (the ref",
+      "is in the URL). Either way the version is validated to be 1.x, so a v2 (dev)",
+      "source is never pulled by mistake.",
     ].join("\n"),
   )
 }
 
-function parseArgs(argv: string[]): Args {
+export function parseArgs(argv: string[]): Args {
   const args: Args = { verify: false }
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]
@@ -100,6 +120,10 @@ function parseArgs(argv: string[]): Args {
       const value = arg === "--source-rev" ? argv[++i] : arg.slice("--source-rev=".length)
       if (!value) throw new Error("--source-rev requires a value")
       args.sourceRev = value
+    } else if (arg === "--ref" || arg.startsWith("--ref=") || arg === "--tag" || arg.startsWith("--tag=")) {
+      const value = arg === "--ref" || arg === "--tag" ? argv[++i] : arg.slice(arg.indexOf("=") + 1)
+      if (!value) throw new Error("--ref requires a value")
+      args.ref = value
     } else if (arg === "-h" || arg === "--help") {
       usage()
       process.exit(0)
@@ -110,8 +134,21 @@ function parseArgs(argv: string[]): Args {
   return args
 }
 
+export function resolveRef(args: Args): string {
+  return args.ref ?? DEFAULT_REF
+}
+
 function fail(message: string): never {
   throw new Error(message)
+}
+
+// opencode's default branch is `dev` (opencode v2). Only the v1.x web UI is
+// compatible with the v1 backend, so fail fast when the resolved source is not 1.x.
+export function assertV1(version: string) {
+  const major = version.trim().replace(/^[vV]/, "").split(".")[0]
+  if (!/^\d+$/.test(major) || Number(major) !== 1) {
+    fail(`opencode version should be 1.x, but detected "${version}"; this may be a v2 source (opencode's default branch is dev)`)
+  }
 }
 
 function run(cmd: string, cwd: string, args: string[]): string {
@@ -172,6 +209,10 @@ async function locateAppRoot(temp: string, url: string): Promise<string> {
   fail(`could not locate packages/app under fetched source ${temp} (from ${url})`)
 }
 
+export function cloneArgs(url: string, ref: string, dest: string) {
+  return ["clone", "--depth", "1", "--branch", ref, url, dest]
+}
+
 async function fetchUpstream(args: Args): Promise<{ temp: string; dir: string; cleanup: () => Promise<void> }> {
   const url = args.url ?? fail("--url mode requires a URL")
   const temp = await mkdtemp(join(process.env.TMPDIR ?? "/tmp", "opencode-sync-"))
@@ -195,7 +236,7 @@ async function fetchUpstream(args: Args): Promise<{ temp: string; dir: string; c
       }
       await rm(archive, { force: true })
     } else {
-      run("git", temp, ["clone", "--depth", "1", url, "src"])
+      run("git", temp, cloneArgs(url, resolveRef(args), "src"))
     }
   } catch (err) {
     await cleanup()
@@ -247,6 +288,7 @@ async function appVersion(app: string): Promise<string> {
   if (typeof pkg.version !== "string" || pkg.version.length === 0) {
     fail(`packages/app/package.json has no version: ${join(app, "package.json")}`)
   }
+  assertV1(pkg.version)
   return pkg.version
 }
 
@@ -377,6 +419,14 @@ async function verify(): Promise<void> {
   if (!manifest) problems.push("missing or unparsable MANIFEST.json")
 
   if (manifest) {
+    const appVersion = manifest.appVersion
+    if (typeof appVersion === "string") {
+      try {
+        assertV1(appVersion)
+      } catch (err) {
+        problems.push(err instanceof Error ? err.message : String(err))
+      }
+    }
     problems.push(...compareCounts(actual, manifest))
   }
 
@@ -444,7 +494,9 @@ async function syncFrom(upstream: string, sourceRev?: string) {
   console.log(`  manifest: ${MANIFEST_PATH}`)
 }
 
-await sync().catch((err) => {
-  console.error(err instanceof Error ? err.message : String(err))
-  process.exit(1)
-})
+if (import.meta.main) {
+  await sync().catch((err) => {
+    console.error(err instanceof Error ? err.message : String(err))
+    process.exit(1)
+  })
+}
