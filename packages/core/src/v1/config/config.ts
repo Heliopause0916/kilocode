@@ -53,6 +53,10 @@ const CommitMessageSchema = Schema.optional(
       description:
         "Custom system prompt for AI commit message generation. When set, replaces the default conventional commits prompt entirely.",
     }),
+    timeoutMs: Schema.optional(PositiveInt).annotate({
+      description:
+        "Maximum time in milliseconds to wait for the LLM to produce a commit message before aborting. Defaults to 300000 (5 minutes).",
+    }),
   }),
 ).annotate({ description: "Configuration for AI-generated commit messages" })
 // kilocode_change end

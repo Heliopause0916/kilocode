@@ -4,6 +4,7 @@ import { existsSync } from "fs"
 import { Effect, Schema } from "effect"
 import { applyEdits, modify, parse as parseJsonc, type ParseError } from "jsonc-parser"
 import { mergeDeep } from "remeda"
+import { PositiveInt } from "@opencode-ai/core/schema"
 import * as Log from "@opencode-ai/core/util/log"
 import { Global } from "@opencode-ai/core/global"
 import { NamedError } from "@opencode-ai/core/util/error"
@@ -31,6 +32,10 @@ export namespace KilocodeConfig {
       prompt: Schema.optional(Schema.String).annotate({
         description:
           "Custom system prompt for AI commit message generation. When set, replaces the default conventional commits prompt entirely.",
+      }),
+      timeoutMs: Schema.optional(PositiveInt).annotate({
+        description:
+          "Maximum time in milliseconds to wait for the LLM to produce a commit message before aborting. Defaults to 300000 (5 minutes).",
       }),
     }),
   ).annotate({ description: "Configuration for AI-generated commit messages" })
