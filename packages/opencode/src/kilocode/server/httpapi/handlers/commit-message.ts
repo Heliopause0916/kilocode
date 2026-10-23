@@ -15,12 +15,14 @@ export const commitMessageHandlers = HttpApiBuilder.group(InstanceHttpApi, "comm
     }) {
       const cfg = yield* config.get()
       const prompt = cfg.commit_message?.prompt || undefined
+      const timeoutMs = cfg.commit_message?.timeoutMs ?? undefined
       const result = yield* EffectBridge.fromPromise(() =>
         generateCommitMessage({
           path: ctx.payload.path,
           selectedFiles: ctx.payload.selectedFiles ? [...ctx.payload.selectedFiles] : undefined,
           previousMessage: ctx.payload.previousMessage,
           prompt,
+          timeoutMs,
           language: ctx.payload.language,
         }),
       ).pipe(
