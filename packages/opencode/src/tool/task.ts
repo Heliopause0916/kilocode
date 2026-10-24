@@ -194,7 +194,11 @@ export const TaskTool = Tool.define(
       // kilocode_change end
       // kilocode_change start — inherit edit/bash/MCP restrictions from calling agent
       const caller = yield* agent.get(ctx.agent)
-      const rules = KiloTask.inherited({ caller, session: parent, mcp: cfg.mcp })
+      const rules = KiloTask.inherited({ caller, session: parent, mcp: cfg.mcp, subagent: next }) // kilocode_change - pass subagent for inheritDeny
+      // kilocode_change - an inheritDeny:false worker that declares its own question rule keeps the
+      // ability to ask the user; without this the unconditional question deny below would override it.
+      const allowQuestion =
+        next.options?.inheritDeny === false && next.permission.some((rule) => rule.permission === "question")
       const childPermission = KiloTask.merge(
         deriveSubagentSessionPermission({
           parentSessionPermission: parent.permission ?? [],
@@ -205,7 +209,7 @@ export const TaskTool = Tool.define(
           pattern: "*",
           action: "deny" as const,
         })) ?? [],
-        KiloTask.permissions(rules, canTask),
+        KiloTask.permissions(rules, canTask, allowQuestion),
       )
       // kilocode_change end
       // kilocode_change start - refresh current parent restrictions when resuming an existing task session

@@ -122,6 +122,14 @@ export namespace KiloTask {
    * Explore has its own enforcement-level read-only bash policy, so every caller retains that
    * boundary without projecting a delegator's bash rules onto custom writable subagents.
    *
+   * `subagent.options.inheritDeny === false` opts the subagent out of inheriting
+   * the calling agent's ceilings entirely. When set, this function returns an
+   * empty ruleset so the subagent relies on its own permission plus the baseline
+   * defaults built by `deriveSubagentSessionPermission`. That opt-out also skips
+   * session-level edit/mutation/MCP/board inheritance and `external_directory`
+   * carries. Use only for delegation you fully trust, since a worker so configured
+   * may exceed the parent agent's restrictions.
+   *
    * The caller must resolve `caller` (Agent.Info) and `session` (Session.Info)
    * before calling. This function is pure/synchronous.
    */
@@ -129,7 +137,9 @@ export namespace KiloTask {
     caller: Agent.Info
     session: Pick<Session.Info, "permission">
     mcp: Config.Info["mcp"]
+    subagent?: Agent.Info
   }): Permission.Ruleset {
+    if (input.subagent?.options?.inheritDeny === false) return []
     const session = input.session.permission ?? []
     const rules = Permission.merge(input.caller.permission ?? [], session)
     const edit = input.caller.native === false ? session : rules
@@ -191,11 +201,23 @@ export namespace KiloTask {
     return new Set(["edit", ...guarded.filter((p) => p !== "bash")])
   }
 
-  /** Extra permission rules appended to subagent sessions */
-  export function permissions(rules: Permission.Ruleset, task = false): Permission.Ruleset {
+  /**
+   * Extra permission rules appended to subagent sessions.
+   *
+   * `allowQuestion` opts a subagent into the user question tool. It is only set
+   * for an `inheritDeny: false` worker that declares its own `question` rule;
+   * without it the unconditional question deny below would sit at the end of the
+   * merged session permission and override that rule, leaving the worker unable
+   * to ask the user. Non-`inheritDeny` subagents keep the unconditional deny.
+   */
+  export function permissions(
+    rules: Permission.Ruleset,
+    task = false,
+    allowQuestion = false,
+  ): Permission.Ruleset {
     return [
       ...(task ? [] : [{ permission: "task", pattern: "*", action: "deny" as const }]),
-      { permission: "question", pattern: "*", action: "deny" },
+      ...(allowQuestion ? [] : [{ permission: "question", pattern: "*", action: "deny" as const }]),
       { permission: "suggest", pattern: "*", action: "deny" },
       ...rules,
     ]
