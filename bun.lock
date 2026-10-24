@@ -1033,6 +1033,7 @@
     "@ai-sdk/groq@3.0.31": "patches/@ai-sdk%2Fgroq@3.0.31.patch",
     "virtua@0.49.1": "patches/virtua@0.49.1.patch",
     "@ai-sdk/google@3.0.73": "patches/@ai-sdk%2Fgoogle@3.0.73.patch",
+    "gcp-metadata@8.1.4": "patches/gcp-metadata@8.1.4.patch",
     "mammoth@1.12.0": "patches/mammoth@1.12.0.patch",
   },
   "overrides": {
