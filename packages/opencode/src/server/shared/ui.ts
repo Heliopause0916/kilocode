@@ -3,6 +3,7 @@ import { Effect } from "effect"
 import { HttpClient, HttpServerRequest, HttpServerResponse } from "effect/unstable/http"
 import { createHash } from "node:crypto"
 import { ConsoleAssets } from "@/kilocode/console/assets" // kilocode_change
+import { WebAssets } from "@/kilocode/web/assets" // kilocode_change
 
 let embeddedUIPromise: Promise<Record<string, string> | null> | undefined
 
@@ -70,6 +71,21 @@ export function serveUIEffect(
       )
     }
     if (asset?.missing) return notFound()
+    // kilocode_change end
+
+    // kilocode_change start - serve vendored upstream opencode web app under /
+    // Governed by the same disableEmbeddedWebUi flag; resolves to undefined when
+    // the assets are absent so the embedded branch below can still take over.
+    if (!services.disableEmbeddedWebUi) {
+      const web = yield* Effect.promise(() => WebAssets.resolve(path))
+      if (web && "file" in web) {
+        return yield* services.fs.readFile(web.file).pipe(
+          Effect.map((body) => embeddedUIResponse(web.file, body)),
+          Effect.catchReason("PlatformError", "NotFound", () => Effect.succeed(notFound())),
+        )
+      }
+      if (web?.missing) return notFound()
+    }
     // kilocode_change end
 
     if (embeddedWebUI) return yield* serveEmbeddedUIEffect(path, services.fs, embeddedWebUI)
